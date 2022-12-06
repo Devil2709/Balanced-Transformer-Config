@@ -24,17 +24,9 @@ class MainWindow(QMainWindow):
         self.canvas = None
         self.graphWidget = None
 
-        # Output params
-        self.eff_val = None
-
         # Input side objects
         self.input_label = None
         self.cal_button = None
-
-        # self.radio_StarStar = None
-        # self.radio_StarDelta = None
-        # self.radio_DeltaStar = None
-        # self.radio_DeltaDelta = None
 
         # Input edit text
         self.vMag_input = None
