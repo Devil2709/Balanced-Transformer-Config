@@ -4,11 +4,16 @@ from PySide6.QtGui import *
 from PySide6.QtWidgets import *
 from pyqtgraph import *
 import matplotlib
-from voltage_reg_cal import get_vol_reg
+from calculations import get_results
+from math import *
 
 matplotlib.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 import matplotlib.pyplot as plt
+
+
+def to_radian(angle):
+    return angle / 180.0 * 3.141593
 
 
 class MainWindow(QMainWindow):
@@ -24,6 +29,7 @@ class MainWindow(QMainWindow):
         # Graph
         self.graphWidget = plt.figure()
         self.canvas = FigureCanvasQTAgg(self.graphWidget)
+        self.ax = None
 
         # Input side objects
         self.input_label = None
@@ -104,13 +110,17 @@ class MainWindow(QMainWindow):
         circuit_layout.addLayout(menu_layout)
 
         # Circuit Image
-        pixmp = QPixmap('img/star-delta-transfomer.jpg')
+        pixmp = QPixmap('img/Select.png')
+        pixmp = pixmp.scaled(600, 300, aspectMode=QtCore.Qt.KeepAspectRatio, mode=QtCore.Qt.FastTransformation)
         self.circuit_dgm.setPixmap(pixmp)
+        self.circuit_dgm.setFixedSize(600, 300)
         self.circuit_dgm.setStyleSheet("QLabel {border: 1px solid grey;"
                                        "border-radius: 7px;"
                                        "padding: 8px;"
                                        "background-color: white;"
-                                       "margin: 10px;}")
+                                       "margin: 10px;"
+                                       "height: 300;"
+                                       "width: 500;}")
 
         circuit_layout.addWidget(self.circuit_dgm, alignment=QtCore.Qt.AlignCenter)
 
@@ -237,9 +247,9 @@ class MainWindow(QMainWindow):
 
         # Graph
         graph_layout = QHBoxLayout()
-        ax = self.graphWidget.add_subplot(111, projection='polar')
+        self.ax = self.graphWidget.add_subplot(111, projection='polar')
         # ax.set_rticks([])
-        ax.plot([0, 45], [0, 35], 'ro-')
+        # ax.plot([0, 45], [0, 35], 'ro-')
         graph_layout.addWidget(self.canvas)
 
         graph_grp = QGroupBox()
@@ -324,6 +334,7 @@ class MainWindow(QMainWindow):
         config = self.trans_config_menu.currentIndex()
         m1 = ['0', '6']
         m2 = ['0', '5', '7', '11']
+        # ['Transformer config', 'DD', 'DY', 'YY', 'YD']
         if config == 1 or config == 3:
             for num in m1:
                 self.polarity_menu.addItem(num)
@@ -331,13 +342,29 @@ class MainWindow(QMainWindow):
             for num in m2:
                 self.polarity_menu.addItem(num)
 
+        if config == 1:
+            pixmp = QPixmap('img/DD.jpeg')
+        elif config == 2:
+            pixmp = QPixmap('img/DY.jpeg')
+        elif config == 3:
+            pixmp = QPixmap('img/YY.jpeg')
+        elif config == 4:
+            pixmp = QPixmap('img/YD.jpeg')
+        else:
+            pixmp = QPixmap('img/Select.png')
+
+        pixmp = pixmp.scaled(550, 300, aspectMode=QtCore.Qt.KeepAspectRatio, mode=QtCore.Qt.FastTransformation)
+        print(pixmp.size())
+        self.circuit_dgm.setPixmap(pixmp)
+        self.circuit_dgm.update()
+
     def calculate(self):
 
         try:
-            trans_config = self.trans_config_menu.currentText().lower()
+            trans_config_raw = self.trans_config_menu.currentText().lower()
             polarity = int(self.polarity_menu.currentText())
             load_config = self.load_config_menu.currentText().lower()
-            config = [trans_config[0], trans_config[1], load_config]
+            trans_config = [trans_config_raw[0], trans_config_raw[1]]
 
             v_line_mag = float(self.vMag_input.text())
             v_line_angle = float(self.vAng_input.text())
@@ -356,11 +383,34 @@ class MainWindow(QMainWindow):
 
         except:
             self.vol_reg_out.setText("Invalid Inp")
+            self.primMag_out.setText("Invalid Inp")
+            self.primAngle_out.setText("Invalid Inp")
+            self.secMag_out.setText("Invalid Inp")
+            self.secAngle_out.setText("Invalid Inp")
             return False
 
-        v_reg = get_vol_reg(config, v_line, polarity, turns_ratio, imp, ro2, xo2)
+        results = get_results(trans_config, polarity, load_config, v_line, turns_ratio, imp, ro2, xo2)
+        v_reg = results[0]
+        i_line_prim = results[1]
+        i_line_sec = results[2]
         self.vol_reg_out.setText(str(v_reg))
         self.vol_reg_out.adjustSize()
+        self.primMag_out.setText(str(i_line_prim[0]))
+        self.primMag_out.adjustSize()
+        self.primAngle_out.setText(str(i_line_prim[1])+'°')
+        self.primAngle_out.adjustSize()
+        self.secMag_out.setText(str(i_line_sec[0]))
+        self.secMag_out.adjustSize()
+        self.secAngle_out.setText(str(i_line_sec[1])+'°')
+        self.secAngle_out.adjustSize()
+        self.ax.cla()
+        # self.ax.plot([0, 5], [0, 45], 'ro-')
+        self.ax.plot([0, to_radian(v_line_angle)], [0, v_line_mag], 'ro-', label="V Line")
+        self.ax.plot([0, to_radian(i_line_prim[1])], [0, i_line_prim[0]], 'bo-', label="Prim I")
+        self.ax.plot([0, to_radian(i_line_sec[1])], [0, i_line_sec[0]], 'go-', label="Sec I")
+        angle = to_radian(20)
+        self.ax.legend(loc="lower left", bbox_to_anchor=(.7 + cos(angle) / 2, .7 + sin(angle) / 2))
+        self.canvas.draw()
         return True
 
 
