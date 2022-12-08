@@ -4,6 +4,7 @@ from PySide6.QtGui import *
 from PySide6.QtWidgets import *
 from pyqtgraph import *
 import matplotlib
+from voltage_reg_cal import get_vol_reg
 
 matplotlib.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
@@ -16,48 +17,46 @@ class MainWindow(QMainWindow):
         QMainWindow.__init__(self)
 
         # Drop-down menus
-        self.trans_config_menu = None
-        self.polarity_menu = None
-        self.load_config_menu = None
+        self.trans_config_menu = QComboBox()
+        self.polarity_menu = QComboBox()
+        self.load_config_menu = QComboBox()
 
         # Graph
-        self.canvas = None
-        self.graphWidget = None
+        self.graphWidget = plt.figure()
+        self.canvas = FigureCanvasQTAgg(self.graphWidget)
 
         # Input side objects
         self.input_label = None
-        self.cal_button = None
+        self.cal_button = QPushButton("Calculate", self)
 
         # Input edit text
-        self.vMag_input = None
-        self.vAng_input = None
-        self.impMag_input = None
-        self.impAng_input = None
-        self.turnsRatioNum_input = None
-        self.turnsRatioDen_input = None
-        self.kva_input = None
-        self.ro2_input = None
-        self.xo2_input = None
+        self.vMag_input = QLineEdit()
+        self.vAng_input = QLineEdit()
+        self.impMag_input = QLineEdit()
+        self.impAng_input = QLineEdit()
+        self.turnsRatioNum_input = QLineEdit()
+        self.turnsRatioDen_input = QLineEdit()
+        self.kva_input = QLineEdit()
+        self.ro2_input = QLineEdit()
+        self.xo2_input = QLineEdit()
 
         # Input Labels
-        self.v_label = None
-        self.imp_label = None
-        self.turnsRatio_label = None
-        self.kva_label = None
-        self.ro2_label = None
-        self.xo2_label = None
+        self.v_label = QLabel("V Line")
+        self.imp_label = QLabel("Impedance")
+        self.turnsRatio_label = QLabel("Turns Ratio")
+        self.kva_label = QLabel("KVA Rating")
+        self.ro2_label = QLabel("Ro2")
+        self.xo2_label = QLabel("Xo2")
 
         # Circuit Diagram
-        self.circuit_dgm = None
+        self.circuit_dgm = QLabel()
 
         # Output Params
-        self.vol_reg_out = None
-        self.prim_out1 = None
-        self.prim_out2 = None
-        self.prim_out3 = None
-        self.sec_out1 = None
-        self.sec_out2 = None
-        self.sec_out3 = None
+        self.vol_reg_out = QLabel("Nil")
+        self.primMag_out = QLabel("Nil")
+        self.primAngle_out = QLabel("Nil")
+        self.secMag_out = QLabel("Nil")
+        self.secAngle_out = QLabel("Nil")
 
         # Main window Init
         self.setWindowTitle("Test")
@@ -69,12 +68,8 @@ class MainWindow(QMainWindow):
     def init_ui(self):
 
         # Drop-down Menus
-        self.trans_config_menu = QComboBox()
-        self.polarity_menu = QComboBox()
-        self.load_config_menu = QComboBox()
-
         menu_ar = [self.trans_config_menu, self.polarity_menu, self.load_config_menu]
-        menu_str = [['Transformer config'], [], []]
+        menu_str = [['Transformer config', 'DD', 'DY', 'YY', 'YD'], [], ['Load Config', 'D', 'Y']]
 
         menu_layout = QHBoxLayout()
 
@@ -83,7 +78,7 @@ class MainWindow(QMainWindow):
             for item in menu_str[i]:
                 menu.addItem(item)
 
-            menu.setPlaceholderText("Select Config")
+            menu.setPlaceholderText("Select Polarity")
             menu.setStyleSheet("QComboBox {border: 1px solid black;"
                                "border-radius: 7px;"
                                "padding: 8px;"
@@ -103,11 +98,12 @@ class MainWindow(QMainWindow):
 
             menu_layout.addWidget(menu)
 
+        self.trans_config_menu.currentIndexChanged.connect(self.trans_config_chng)
+
         circuit_layout = QVBoxLayout()
         circuit_layout.addLayout(menu_layout)
 
         # Circuit Image
-        self.circuit_dgm = QLabel()
         pixmp = QPixmap('img/star-delta-transfomer.jpg')
         self.circuit_dgm.setPixmap(pixmp)
         self.circuit_dgm.setStyleSheet("QLabel {border: 1px solid grey;"
@@ -119,23 +115,6 @@ class MainWindow(QMainWindow):
         circuit_layout.addWidget(self.circuit_dgm, alignment=QtCore.Qt.AlignCenter)
 
         # Input Params
-        self.vMag_input = QLineEdit()
-        self.vAng_input = QLineEdit()
-        self.impMag_input = QLineEdit()
-        self.impAng_input = QLineEdit()
-        self.turnsRatioNum_input = QLineEdit()
-        self.turnsRatioDen_input = QLineEdit()
-        self.kva_input = QLineEdit()
-        self.ro2_input = QLineEdit()
-        self.xo2_input = QLineEdit()
-
-        self.v_label = QLabel("V Line")
-        self.imp_label = QLabel("Impedance")
-        self.turnsRatio_label = QLabel("Turns Ratio")
-        self.kva_label = QLabel("KVA Rating")
-        self.ro2_label = QLabel("Ro2")
-        self.xo2_label = QLabel("Xo2")
-
         input_ar = [self.vMag_input, self.vAng_input, self.impMag_input, self.impAng_input, self.turnsRatioNum_input,
                     self.turnsRatioDen_input, self.kva_input, self.ro2_input, self.xo2_input]
         label_ar = [self.v_label, self.imp_label, self.turnsRatio_label, self.kva_label, self.ro2_label, self.xo2_label]
@@ -218,7 +197,6 @@ class MainWindow(QMainWindow):
         input_layout2.addLayout(xo2_layout)
 
         # Calculate Button
-        self.cal_button = QPushButton("Calculate", self)
         self.cal_button.setStyleSheet("QPushButton {border: 1px solid grey;"
                                       "border-radius: 7px;"
                                       "background-color: white;"
@@ -228,6 +206,7 @@ class MainWindow(QMainWindow):
                                       "margin: 10px;}"
                                       "QPushButton::pressed {border: 2px solid grey;}")
         self.cal_button.animateClick()
+        self.cal_button.clicked.connect(self.calculate)
 
         bottom_layout = QVBoxLayout()
         bottom_layout.addLayout(input_layout1)
@@ -258,8 +237,6 @@ class MainWindow(QMainWindow):
 
         # Graph
         graph_layout = QHBoxLayout()
-        self.graphWidget = plt.figure()
-        self.canvas = FigureCanvasQTAgg(self.graphWidget)
         ax = self.graphWidget.add_subplot(111, projection='polar')
         # ax.set_rticks([])
         ax.plot([0, 45], [0, 35], 'ro-')
@@ -275,18 +252,9 @@ class MainWindow(QMainWindow):
                                 "padding-bottom: 8px;}")
 
         # Output
-        self.vol_reg_out = QLabel("Nil")
-        self.prim_out1 = QLabel("Nil")
-        self.prim_out2 = QLabel("Nil")
-        self.prim_out3 = QLabel("Nil")
-        self.sec_out1 = QLabel("Nil")
-        self.sec_out2 = QLabel("Nil")
-        self.sec_out3 = QLabel("Nil")
-
-        # Headings
         vol_reg_head = QLabel("Voltage Regulation")
-        out_prim_head = QLabel("Primary Currents")
-        out_sec_head = QLabel("Secondary Currents")
+        out_prim_head = QLabel("Primary Currents(Mag|Angle)")
+        out_sec_head = QLabel("Secondary Currents(Mag|Angle)")
 
         out_prim_head.setStyleSheet("QLabel {font: 20px Ariral;"
                                     "margin: 5px;}")
@@ -300,8 +268,7 @@ class MainWindow(QMainWindow):
         out_sec_head.setAlignment(QtCore.Qt.AlignCenter)
         vol_reg_head.setAlignment(QtCore.Qt.AlignCenter)
 
-        out_text_ar = [self.vol_reg_out, self.prim_out1, self.prim_out2, self.prim_out3, self.sec_out1, self.sec_out2,
-                       self.sec_out3]
+        out_text_ar = [self.vol_reg_out, self.primMag_out, self.primAngle_out, self.secMag_out, self.secAngle_out]
         for out_text in out_text_ar:
             out_text.setStyleSheet("QLabel {border: 1px solid grey;"
                                    "border-radius: 7px;"
@@ -310,16 +277,17 @@ class MainWindow(QMainWindow):
                                    "padding: 8px;"
                                    "margin: 10px;}")
 
-            out_text.setFixedSize(150, 65)
+            out_text.setMinimumSize(150, 65)
+            out_text.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
             out_text.setAlignment(QtCore.Qt.AlignCenter)
 
         out_prim_layout = QHBoxLayout()
         out_sec_layout = QHBoxLayout()
 
-        for i in range(1, 4):
+        for i in range(1, 3):
             out_prim_layout.addWidget(out_text_ar[i], alignment=QtCore.Qt.AlignCenter)
 
-        for i in range(4, 7):
+        for i in range(3, 5):
             out_sec_layout.addWidget(out_text_ar[i], alignment=QtCore.Qt.AlignCenter)
 
         output_layout = QVBoxLayout()
@@ -349,6 +317,51 @@ class MainWindow(QMainWindow):
         widget = QWidget()
         widget.setLayout(main_layout)
         self.setCentralWidget(widget)
+
+    def trans_config_chng(self):
+        self.polarity_menu.clear()
+        self.polarity_menu.addItem('Select polarity')
+        config = self.trans_config_menu.currentIndex()
+        m1 = ['0', '6']
+        m2 = ['0', '5', '7', '11']
+        if config == 1 or config == 3:
+            for num in m1:
+                self.polarity_menu.addItem(num)
+        elif config != 0:
+            for num in m2:
+                self.polarity_menu.addItem(num)
+
+    def calculate(self):
+
+        try:
+            trans_config = self.trans_config_menu.currentText().lower()
+            polarity = int(self.polarity_menu.currentText())
+            load_config = self.load_config_menu.currentText().lower()
+            config = [trans_config[0], trans_config[1], load_config]
+
+            v_line_mag = float(self.vMag_input.text())
+            v_line_angle = float(self.vAng_input.text())
+            v_line = (v_line_mag, v_line_angle)
+
+            turns_ratio_num = float(self.turnsRatioNum_input.text())
+            turns_ratio_den = float(self.turnsRatioDen_input.text())
+            turns_ratio = (turns_ratio_num, turns_ratio_den)
+
+            imp_mag = float(self.impMag_input.text())
+            imp_angle = float(self.impAng_input.text())
+            imp = (imp_mag, imp_angle)
+
+            ro2 = float(self.ro2_input.text())
+            xo2 = float(self.xo2_input.text())
+
+        except:
+            self.vol_reg_out.setText("Invalid Inp")
+            return False
+
+        v_reg = get_vol_reg(config, v_line, polarity, turns_ratio, imp, ro2, xo2)
+        self.vol_reg_out.setText(str(v_reg))
+        self.vol_reg_out.adjustSize()
+        return True
 
 
 if __name__ == "__main__":
