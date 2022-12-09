@@ -1,4 +1,4 @@
-import sys
+import sys, os
 from PySide6.QtCore import *
 from PySide6.QtGui import *
 from PySide6.QtWidgets import *
@@ -49,7 +49,7 @@ class MainWindow(QMainWindow):
         # Input Labels
         self.v_label = QLabel("V Line")
         self.imp_label = QLabel("Impedance")
-        self.turnsRatio_label = QLabel("Turns Ratio")
+        self.turnsRatio_label = QLabel("Voltage Ratio")
         self.kva_label = QLabel("KVA Rating")
         self.ro2_label = QLabel("Ro2")
         self.xo2_label = QLabel("Xo2")
@@ -65,7 +65,7 @@ class MainWindow(QMainWindow):
         self.secAngle_out = QLabel("Nil")
 
         # Main window Init
-        self.setWindowTitle("Test")
+        self.setWindowTitle("Transformation configuration")
         geometry = self.screen().availableGeometry()
         self.setGeometry(100, 100, geometry.width() * 0.9, geometry.height() * 0.9)
         self.init_ui()
