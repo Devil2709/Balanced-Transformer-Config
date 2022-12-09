@@ -333,7 +333,7 @@ class MainWindow(QMainWindow):
         self.polarity_menu.addItem('Select polarity')
         config = self.trans_config_menu.currentIndex()
         m1 = ['0', '6']
-        m2 = ['0', '5', '7', '11']
+        m2 = ['1', '5', '7', '11']
         # ['Transformer config', 'DD', 'DY', 'YY', 'YD']
         if config == 1 or config == 3:
             for num in m1:
@@ -393,7 +393,7 @@ class MainWindow(QMainWindow):
         v_reg = results[0]
         i_line_prim = results[1]
         i_line_sec = results[2]
-        self.vol_reg_out.setText(str(v_reg))
+        self.vol_reg_out.setText(str(v_reg*100))
         self.vol_reg_out.adjustSize()
         self.primMag_out.setText(str(i_line_prim[0]))
         self.primMag_out.adjustSize()
@@ -405,9 +405,8 @@ class MainWindow(QMainWindow):
         self.secAngle_out.adjustSize()
         self.ax.cla()
         # self.ax.plot([0, 5], [0, 45], 'ro-')
-        self.ax.plot([0, to_radian(v_line_angle)], [0, v_line_mag], 'ro-', label="V Line")
         self.ax.plot([0, to_radian(i_line_prim[1])], [0, i_line_prim[0]], 'bo-', label="Prim I")
-        self.ax.plot([0, to_radian(i_line_sec[1])], [0, i_line_sec[0]], 'go-', label="Sec I")
+        self.ax.plot([0, to_radian(i_line_sec[1])], [0, i_line_sec[0]], 'ro-', label="Sec I")
         angle = to_radian(20)
         self.ax.legend(loc="lower left", bbox_to_anchor=(.7 + cos(angle) / 2, .7 + sin(angle) / 2))
         self.canvas.draw()
